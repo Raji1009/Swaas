@@ -2,12 +2,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const RppgCamera: React.FC = () => {
-  const videoRef = React.useRef<HTMLVideoElement | null>(null);
-  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+const RppgCamera = () => {
+  const videoRef = React.useRef(null);
+  const canvasRef = React.useRef(null);
   const [running, setRunning] = React.useState(false);
-  const [signal, setSignal] = React.useState<number[]>([]);
-  const rafRef = React.useRef<number | null>(null);
+  const [signal, setSignal] = React.useState([]);
+  const rafRef = React.useRef(null);
 
   const start = async () => {
     if (!videoRef.current) return;
@@ -24,9 +24,9 @@ const RppgCamera: React.FC = () => {
 
   const stop = () => {
     if (videoRef.current && videoRef.current.srcObject) {
-      const ms: any = videoRef.current.srcObject;
-      const tracks = ms.getTracks ? ms.getTracks() : [];
-      tracks.forEach((t: any) => t.stop());
+      const mediaStream = videoRef.current.srcObject;
+      const tracks = mediaStream.getTracks ? mediaStream.getTracks() : [];
+      tracks.forEach(track => track.stop());
       videoRef.current.srcObject = null;
     }
     setRunning(false);
@@ -75,7 +75,7 @@ const RppgCamera: React.FC = () => {
     const mean = arr.reduce((s, v) => s + v, 0) / arr.length;
     const std = Math.sqrt(arr.reduce((s, v) => s + (v - mean) ** 2, 0) / arr.length) || 1;
     // find peaks
-    const peaks: number[] = [];
+    const peaks = [];
     for (let i = 1; i < arr.length - 1; i++) {
       if (arr[i] > arr[i - 1] && arr[i] > arr[i + 1] && arr[i] > mean + 0.5 * std) {
         peaks.push(i);
@@ -83,7 +83,7 @@ const RppgCamera: React.FC = () => {
     }
     if (peaks.length < 2) return 0;
     // compute average interval (samples) between peaks and convert to BPM
-    const intervals: number[] = [];
+    const intervals = [];
     for (let i = 1; i < peaks.length; i++) intervals.push(peaks[i] - peaks[i - 1]);
     const avgInterval = intervals.reduce((s, v) => s + v, 0) / intervals.length;
     // sampling rate is ~30 fps (captureLoop runs at camera fps) — approximate

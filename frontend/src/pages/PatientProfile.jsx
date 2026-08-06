@@ -2,14 +2,7 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchPatientProfile } from '../services/api';
 
-type Sample = {
-    timestamp: string;
-    anxiety: number;
-    depression: number;
-    stress: number;
-};
-
-const Chart: React.FC<{ data: number[]; color: string; height?: number; maxWidth?: number }> = ({ data, color, height = 120, maxWidth = 480 }) => {
+const Chart = ({ data, color, height = 120, maxWidth = 480 }) => {
     if (!data || data.length === 0) return <div>No data</div>;
     // Use a fixed viewBox and allow SVG to scale to container width
     const vw = maxWidth;
@@ -32,11 +25,11 @@ const Chart: React.FC<{ data: number[]; color: string; height?: number; maxWidth
     );
 };
 
-const PatientProfile: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
-    const [patientData, setPatientData] = React.useState<any | null>(null);
-    const [loading, setLoading] = React.useState<boolean>(true);
-    const [error, setError] = React.useState<string | null>(null);
+const PatientProfile = () => {
+    const { id } = useParams();
+    const [patientData, setPatientData] = React.useState(null);
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState(null);
 
     React.useEffect(() => {
         const getPatientProfile = async () => {
@@ -57,7 +50,7 @@ const PatientProfile: React.FC = () => {
     if (error) return <div>{error}</div>;
     if (!patientData) return <div>No patient data found.</div>;
 
-    const samples: Sample[] = patientData.samples || [];
+    const samples = patientData.samples || [];
     const timestamps = samples.map(s => new Date(s.timestamp).toLocaleDateString());
     const anxietySeries = samples.map(s => s.anxiety);
     const depressionSeries = samples.map(s => s.depression);

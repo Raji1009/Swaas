@@ -4,14 +4,14 @@ import { useHistory } from 'react-router-dom';
 
 const api = axios.create({ baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000/api' });
 
-const Auth: React.FC = () => {
+const Auth = () => {
   const [isLogin, setIsLogin] = React.useState(true);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
-  const [message, setMessage] = React.useState<string | null>(null);
+  const [message, setMessage] = React.useState(null);
   const history = useHistory();
 
-  const submit = async (e: React.FormEvent) => {
+  const submit = async e => {
     e.preventDefault();
     setMessage(null);
     try {
@@ -25,8 +25,7 @@ const Auth: React.FC = () => {
       // redirect to dashboard
       history.push('/dashboard');
     } catch (err) {
-      const e: any = err;
-      setMessage(e?.response?.data?.message || e.message || 'Error');
+      setMessage(err?.response?.data?.message || err.message || 'Error');
     }
   };
 

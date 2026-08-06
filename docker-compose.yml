@@ -9,6 +9,8 @@ services:
       - "5000:5000"
     environment:
       - NODE_ENV=production
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongo:27017/swaas
     volumes:
       - ./backend/src:/app/src
     depends_on:
@@ -24,7 +26,7 @@ services:
       - backend
 
   mongo:
-    image: mongo
+    image: mongo:7
     ports:
       - "27017:27017"
     volumes:
