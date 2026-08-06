@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useHistory } from 'react-router-dom';
 
-const Header: React.FC = () => {
+const Header = () => {
   const history = useHistory();
 
   const onLogout = () => {

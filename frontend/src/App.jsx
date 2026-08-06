@@ -6,7 +6,7 @@ import Auth from './pages/Auth';
 import RppgCamera from './pages/RppgCamera';
 import Header from './components/Header';
 
-const App: React.FC = () => {
+const App = () => {
   return (
     <Router>
       <Header />
