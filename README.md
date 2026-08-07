@@ -89,6 +89,28 @@ Swaas
    REACT_APP_API_URL=http://localhost:5000/api npm start --prefix frontend
    ```
 
+## Deploying Frontend to Vercel (via GitHub)
+
+To make deploying the frontend to Vercel work smoothly, the frontend needs the production API base URL at build time. Follow these steps:
+
+1. Deploy your backend to a public host (Render, Railway, Heroku, etc.) and note the base URL (for example `https://my-backend.example.com`).
+
+2. In your Vercel project settings (connect your GitHub repo), add an Environment Variable named `REACT_APP_API_BASE_URL` with value `https://my-backend.example.com/api`.
+
+3. Ensure CORS is enabled on the backend (the backend uses `cors()` by default).
+
+4. Trigger a new deployment on Vercel (push to the branch configured for deploy). Vercel will run the frontend build and the compiled app will call the backend using the URL from `REACT_APP_API_BASE_URL`.
+
+Troubleshooting:
+- If you see a 405 or other error when calling `register`/`login`, open DevTools → Network to confirm the request URL points to your backend domain. If it points to your Vercel domain or a relative `/api` path, the environment variable wasn't set at build time.
+- You can also test the frontend locally with the production variable:
+  ```bash
+  REACT_APP_API_BASE_URL=https://my-backend.example.com/api npm run build --prefix frontend
+  serve -s frontend/build
+  ```
+
+If you'd like, I can add a sample GitHub Action to build the frontend and publish `frontend/build` to `gh-pages` instead of using Vercel.
+
 ## API Notes
 - `GET /health` reports backend and MongoDB connection status.
 - `POST /api/register` creates a user document.

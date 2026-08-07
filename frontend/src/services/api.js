@@ -1,13 +1,17 @@
 import axios from 'axios';
 
-const DEFAULT_API_URL = process.env.REACT_APP_API_URL || '/api';
+// For production builds (Vercel, GitHub Pages) set REACT_APP_API_BASE_URL
+// e.g. REACT_APP_API_BASE_URL=https://my-backend.example.com/api
+const DEFAULT_API_URL = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || '/api';
 const USERS_STORAGE_KEY = 'swaas-demo-users';
 const AUTH_STORAGE_KEY = 'swaas-auth-session';
 
 const apiClient = axios.create({
-    baseURL: process.env.REACT_APP_API_URL || DEFAULT_API_URL,
+    baseURL: DEFAULT_API_URL,
     timeout: 10000,
 });
+
+export const getApiBase = () => DEFAULT_API_URL;
 
 const buildSeedSamples = () => {
     const now = Date.now();
