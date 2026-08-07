@@ -4,7 +4,8 @@ import { getStoredSession } from '../services/api';
 
 const Header = () => {
   const history = useHistory();
-  const isLoggedIn = Boolean(localStorage.getItem('token') || getStoredSession());
+  const session = getStoredSession();
+  const isLoggedIn = Boolean(localStorage.getItem('token') || session);
 
   const onLogout = () => {
     try {
@@ -22,12 +23,6 @@ const Header = () => {
         <div className="brand">Swaas</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {isLoggedIn && (
-          <nav className="nav-links">
-            <Link to="/dashboard">Dashboard</Link>
-            <Link to="/rppg">RPPG</Link>
-          </nav>
-        )}
         {isLoggedIn ? <button onClick={onLogout} className="secondary">Logout</button> : <Link to="/">Login</Link>}
       </div>
     </header>

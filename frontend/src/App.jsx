@@ -29,6 +29,9 @@ const App = () => {
           <ProtectedRoute path="/patient/:id" component={PatientProfile} />
         </Switch>
       </main>
+      <footer style={{ textAlign: 'center', padding: 12, color: '#666', fontSize: 13 }}>
+        @2026 Swaas .All Rights Reserved
+      </footer>
     </Router>
   );
 };

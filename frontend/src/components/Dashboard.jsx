@@ -10,10 +10,10 @@ const Dashboard = () => {
     return (
         <div className="card">
             <h1>{patient?.name ? `${patient.name}'s Dashboard` : 'Patient Dashboard'}</h1>
-            <p className="muted">Welcome back. Start a reading or open the full profile view.</p>
+            <p className="muted">Welcome back. Choose an action below.</p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
                 <Link to="/rppg"><button>Open RPPG Camera</button></Link>
-                <Link to={`/patient/${patientId}`}><button className="secondary">View Patient Profile</button></Link>
+                <Link to={`/patient/${patientId}`}><button className="secondary">Patients Dashboard</button></Link>
             </div>
         </div>
     );

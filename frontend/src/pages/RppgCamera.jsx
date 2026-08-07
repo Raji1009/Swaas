@@ -119,24 +119,41 @@ const RppgCamera = () => {
     const storedSession = getStoredSession();
     if (!storedSession?.patient) return;
 
+    const sample = {
+      timestamp: new Date().toISOString(),
+      anxiety: metrics.anxiety,
+      depression: metrics.depression,
+      stress: metrics.stress,
+      bpm: metrics.bpm,
+    };
+
+    const existingSamples = Array.isArray(storedSession.patient.samples) ? storedSession.patient.samples.slice() : [];
+    existingSamples.push(sample);
+    const kept = existingSamples.slice(-50);
+
     const updatedSession = {
       ...storedSession,
       patient: {
         ...storedSession.patient,
         bpm: metrics.bpm,
         mentalHealthMetrics: {
-          anxietyLevel: storedSession.patient.mentalHealthMetrics?.anxietyLevel ?? 0,
-          depressionLevel: storedSession.patient.mentalHealthMetrics?.depressionLevel ?? 0,
-          stressLevel: storedSession.patient.mentalHealthMetrics?.stressLevel ?? 0,
+          anxietyLevel: metrics.anxiety,
+          depressionLevel: metrics.depression,
+          stressLevel: metrics.stress,
         },
+        samples: kept,
+        lastVisit: new Date().toISOString(),
       },
     };
+
     localStorage.setItem('swaas-auth-session', JSON.stringify(updatedSession));
 
     if (storedSession.patient.id) {
       submitMentalHealthData(storedSession.patient.id, {
-        bpm: metrics.bpm,
-        timestamp: new Date().toISOString(),
+        anxiety: metrics.anxiety,
+        depression: metrics.depression,
+        stress: metrics.stress,
+        timestamp: sample.timestamp,
       }).catch(() => undefined);
     }
   }, [metrics]);
