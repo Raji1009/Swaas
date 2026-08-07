@@ -1,8 +1,6 @@
 import React from 'react';
-import axios from 'axios';
 import { useHistory } from 'react-router-dom';
-
-const api = axios.create({ baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000/api' });
+import { login, register } from '../services/api';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = React.useState(true);
@@ -15,17 +13,16 @@ const Auth = () => {
     e.preventDefault();
     setMessage(null);
     try {
-      const route = isLogin ? '/login' : '/register';
-      const res = await api.post(route, { email, password });
-      // store token (mock)
-      if (res.data && res.data.token) {
-        localStorage.setItem('token', res.data.token);
+      const authenticate = isLogin ? login : register;
+      const data = await authenticate({ email, password });
+      if (data && data.token) {
+        localStorage.setItem('token', data.token);
       }
       setMessage('Success');
       // redirect to dashboard
       history.push('/dashboard');
     } catch (err) {
-      setMessage(err?.response?.data?.message || err.message || 'Error');
+      setMessage(err.message || 'Error');
     }
   };
 
