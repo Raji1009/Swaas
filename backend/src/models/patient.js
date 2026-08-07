@@ -14,9 +14,10 @@ const patientSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     age: { type: Number, min: 0, max: 120, required: true },
+    email: { type: String, trim: true, lowercase: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     samples: { type: [mentalHealthMetricSchema], default: [] },
     lastVisit: { type: Date, default: Date.now },
-    notes: { type: String, default: '' },
   },
   { timestamps: true }
 );

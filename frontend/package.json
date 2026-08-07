@@ -4,8 +4,8 @@
   "description": "A smart health measurement application providing mental health details for patients.",
   "main": "src/index.jsx",
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "node --openssl-legacy-provider node_modules/react-scripts/bin/react-scripts.js start",
+    "build": "node --openssl-legacy-provider node_modules/react-scripts/bin/react-scripts.js build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -16,6 +16,7 @@
     "react-router-dom": "^5.3.4",
     "react-scripts": "^5.0.1"
   },
+  "proxy": "http://localhost:5000",
   "devDependencies": {},
   "license": "MIT",
   "browserslist": {

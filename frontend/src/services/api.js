@@ -1,7 +1,8 @@
 import axios from 'axios';
 
-const DEFAULT_API_URL = 'http://localhost:5000/api';
+const DEFAULT_API_URL = process.env.REACT_APP_API_URL || '/api';
 const USERS_STORAGE_KEY = 'swaas-demo-users';
+const AUTH_STORAGE_KEY = 'swaas-auth-session';
 
 const apiClient = axios.create({
     baseURL: process.env.REACT_APP_API_URL || DEFAULT_API_URL,
@@ -37,6 +38,16 @@ const samplePatient = {
     },
 };
 
+const getStoredSession = () => {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch (error) {
+        return null;
+    }
+};
+
 const isNetworkError = error => Boolean(error?.request) && !error?.response;
 
 const readDemoUsers = () => {
@@ -48,32 +59,61 @@ const writeDemoUsers = users => {
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
 };
 
-const createDemoSession = email => ({
-    message: 'Demo session started',
-    token: `demo-token-${Date.now()}`,
-    user: { id: email, email },
-    offline: true,
-});
+const createDemoSession = ({ email, password, name, age, notes }) => {
+    const patient = {
+        id: `demo-${Date.now()}`,
+        name: name || email.split('@')[0],
+        age: Number(age) || 0,
+        email,
+        notes: notes || '',
+        samples: [],
+        lastVisit: new Date().toISOString(),
+        mentalHealthMetrics: {
+            anxietyLevel: 0,
+            depressionLevel: 0,
+            stressLevel: 0,
+        },
+    };
 
-const loginOffline = ({ email, password }) => {
+    return {
+        message: 'Demo session started',
+        token: `demo-token-${Date.now()}`,
+        user: { id: email, email },
+        patient,
+        offline: true,
+    };
+};
+
+const saveSession = session => {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+};
+
+export { getStoredSession };
+
+const loginOffline = credentials => {
     const users = readDemoUsers();
-    const user = users.find(savedUser => savedUser.email === email && savedUser.password === password);
+    const user = users.find(savedUser => savedUser.email === credentials.email && savedUser.password === credentials.password);
 
     if (!user) {
         throw new Error('Login failed: No matching demo account was found. Register first, or start the backend API for database login.');
     }
 
-    return createDemoSession(email);
+    const session = createDemoSession({ ...credentials, name: user.name, age: user.age, notes: user.notes });
+    saveSession(session);
+    return session;
 };
 
-const registerOffline = ({ email, password }) => {
+const registerOffline = credentials => {
     const users = readDemoUsers();
-    if (users.some(savedUser => savedUser.email === email)) {
+    if (users.some(savedUser => savedUser.email === credentials.email)) {
         throw new Error('Registration failed: Demo user already exists. Please login instead.');
     }
 
-    writeDemoUsers([...users, { email, password }]);
-    return createDemoSession(email);
+    const nextUsers = [...users, { ...credentials, password: credentials.password, name: credentials.name || '', age: credentials.age || 0, notes: credentials.notes || '' }];
+    writeDemoUsers(nextUsers);
+    const session = createDemoSession(credentials);
+    saveSession(session);
+    return session;
 };
 
 const buildApiError = (action, error) => {
@@ -88,10 +128,14 @@ const buildApiError = (action, error) => {
 export const login = async credentials => {
     try {
         const response = await apiClient.post('/login', credentials);
-        return response.data;
+        const session = response.data;
+        saveSession(session);
+        return session;
     } catch (error) {
         if (isNetworkError(error)) {
-            return loginOffline(credentials);
+            const session = loginOffline(credentials);
+            saveSession(session);
+            return session;
         }
 
         throw buildApiError('Login failed', error);
@@ -101,17 +145,39 @@ export const login = async credentials => {
 export const register = async credentials => {
     try {
         const response = await apiClient.post('/register', credentials);
-        return response.data;
+        const session = response.data;
+        saveSession(session);
+        return session;
     } catch (error) {
         if (isNetworkError(error)) {
-            return registerOffline(credentials);
+            const session = registerOffline(credentials);
+            saveSession(session);
+            return session;
         }
 
         throw buildApiError('Registration failed', error);
     }
 };
 
+export const resetPassword = async ({ email, newPassword }) => {
+    const users = readDemoUsers();
+    const user = users.find(savedUser => savedUser.email === email);
+
+    if (!user) {
+        throw new Error('Password reset failed: no account was found for that email.');
+    }
+
+    const updatedUsers = users.map(savedUser => savedUser.email === email ? { ...savedUser, password: newPassword } : savedUser);
+    writeDemoUsers(updatedUsers);
+    return { message: 'Password reset successful', email };
+};
+
 export const fetchPatientProfile = async patientId => {
+    const storedSession = getStoredSession();
+    if (storedSession?.patient && String(storedSession.patient.id) === String(patientId)) {
+        return storedSession.patient;
+    }
+
     try {
         const response = await apiClient.get(`/patients/${patientId}`);
         return response.data;

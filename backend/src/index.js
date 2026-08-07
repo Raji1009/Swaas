@@ -24,11 +24,11 @@ const startServer = async () => {
     await mongoose.connect(MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 3000,
     });
     console.log(`Connected to MongoDB at ${MONGODB_URI}`);
   } catch (error) {
-    console.error('MongoDB connection failed:', error.message);
-    process.exit(1);
+    console.warn('MongoDB connection failed. Starting backend in fallback mode:', error.message);
   }
 
   app.listen(PORT, () => {

@@ -1,6 +1,7 @@
 /* eslint-disable */
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { getStoredSession, submitMentalHealthData } from '../services/api';
 
 const RppgCamera = () => {
   const videoRef = React.useRef(null);
@@ -46,16 +47,12 @@ const RppgCamera = () => {
     canvas.height = h;
     ctx.drawImage(video, 0, 0, w, h);
     const img = ctx.getImageData(0, 0, w, h);
-    // compute mean green channel
     let sum = 0;
     for (let i = 0; i < img.data.length; i += 4) {
       sum += img.data[i + 1];
     }
     const avg = sum / (img.data.length / 4);
-    setSignal(prev => {
-      const next = [...prev, avg].slice(-300);
-      return next;
-    });
+    setSignal(prev => [...prev, avg].slice(-220));
 
     rafRef.current = requestAnimationFrame(captureLoop);
   };
@@ -67,58 +64,109 @@ const RppgCamera = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // naive BPM estimate using peak detection on signal
-  const estimateBPM = React.useMemo(() => {
-    if (signal.length < 60) return 0;
-    // normalize
-    const arr = signal.slice(-300);
-    const mean = arr.reduce((s, v) => s + v, 0) / arr.length;
-    const std = Math.sqrt(arr.reduce((s, v) => s + (v - mean) ** 2, 0) / arr.length) || 1;
-    // find peaks
-    const peaks = [];
-    for (let i = 1; i < arr.length - 1; i++) {
-      if (arr[i] > arr[i - 1] && arr[i] > arr[i + 1] && arr[i] > mean + 0.5 * std) {
-        peaks.push(i);
-      }
+  const metrics = React.useMemo(() => {
+    if (signal.length < 20) {
+      return { bpm: 0 };
     }
-    if (peaks.length < 2) return 0;
-    // compute average interval (samples) between peaks and convert to BPM
-    const intervals = [];
-    for (let i = 1; i < peaks.length; i++) intervals.push(peaks[i] - peaks[i - 1]);
-    const avgInterval = intervals.reduce((s, v) => s + v, 0) / intervals.length;
-    // sampling rate is ~30 fps (captureLoop runs at camera fps) — approximate
-    const fps = 30;
-    const bpm = (fps * 60) / avgInterval;
-    return Math.round(bpm);
+
+    const arr = signal.slice(-180);
+    const mean = arr.reduce((s, v) => s + v, 0) / arr.length;
+    const centered = arr.map(v => v - mean);
+    const std = Math.sqrt(centered.reduce((s, v) => s + v * v, 0) / centered.length) || 1;
+    const normalized = centered.map(v => v / (std * 2));
+
+    const smoothed = normalized.map((value, index) => {
+      const prev = normalized[index - 1] || value;
+      const next = normalized[index + 1] || value;
+      return (value + prev + next) / 3;
+    });
+
+    const window = 8;
+    const peaks = [];
+    for (let i = window; i < smoothed.length - window; i++) {
+      const current = smoothed[i];
+      const isPeak = current > smoothed[i - 1] && current > smoothed[i + 1] && current > 0.25;
+      if (isPeak) peaks.push(i);
+    }
+
+    let bpm = 0;
+    if (peaks.length >= 2) {
+      const intervals = [];
+      for (let i = 1; i < peaks.length; i++) intervals.push(peaks[i] - peaks[i - 1]);
+      const avgInterval = intervals.reduce((s, v) => s + v, 0) / intervals.length;
+      const fps = 18;
+      bpm = Math.round(Math.max(40, Math.min(180, (fps * 60) / avgInterval)));
+    }
+
+    return { bpm };
   }, [signal]);
+
+  const waveformPoints = React.useMemo(() => {
+    const values = signal.length > 1 ? signal.slice(-120) : [60, 62];
+    const width = 300;
+    const height = 140;
+    const mid = height / 2;
+    return values.map((value, index) => {
+      const x = (index / Math.max(1, values.length - 1)) * width;
+      const normalized = (value - 50) / 35;
+      const y = mid - normalized * 32;
+      return `${x},${y}`;
+    }).join(' ');
+  }, [signal]);
+
+  React.useEffect(() => {
+    if (!metrics.bpm) return;
+    const storedSession = getStoredSession();
+    if (!storedSession?.patient) return;
+
+    const updatedSession = {
+      ...storedSession,
+      patient: {
+        ...storedSession.patient,
+        bpm: metrics.bpm,
+        mentalHealthMetrics: {
+          anxietyLevel: storedSession.patient.mentalHealthMetrics?.anxietyLevel ?? 0,
+          depressionLevel: storedSession.patient.mentalHealthMetrics?.depressionLevel ?? 0,
+          stressLevel: storedSession.patient.mentalHealthMetrics?.stressLevel ?? 0,
+        },
+      },
+    };
+    localStorage.setItem('swaas-auth-session', JSON.stringify(updatedSession));
+
+    if (storedSession.patient.id) {
+      submitMentalHealthData(storedSession.patient.id, {
+        bpm: metrics.bpm,
+        timestamp: new Date().toISOString(),
+      }).catch(() => undefined);
+    }
+  }, [metrics]);
 
   return (
     <div className="card">
       <h2>RPPG Camera</h2>
-      <div style={{ display: 'flex', gap: 16 }}>
-        <div>
-          <video ref={videoRef} style={{ width: 320, height: 240, background: '#000', borderRadius: 6 }} />
-          <div className="rppg-controls">
+      <p className="muted">The waveform rises and falls with the signal so you can see the pulse clearly. The full trend stays in the patient profile.</p>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 12 }}>
+        <div style={{ minWidth: 280 }}>
+          <video ref={videoRef} style={{ width: 320, height: 240, background: '#000', borderRadius: 8 }} />
+          <div className="rppg-controls" style={{ marginTop: 8 }}>
             <button onClick={start} disabled={running}>Start</button>
             <button onClick={stop} disabled={!running} className="secondary">Stop</button>
             <Link to="/dashboard"><button className="secondary">Back to Dashboard</button></Link>
           </div>
         </div>
-        <div>
+        <div style={{ flex: 1, minWidth: 280 }}>
           <canvas ref={canvasRef} style={{ display: 'none' }} />
-          <div style={{ width: 360, height: 240, overflow: 'auto', border: '1px solid #ddd', padding: 8 }}>
-            <p className="small">Live signal (last {signal.length} samples)</p>
-            <div style={{ height: 120, width: 320, background: '#111' }}>
-              <svg width="320" height="120">
-                <polyline
-                  fill="none"
-                  stroke="#0f0"
-                  strokeWidth={1}
-                  points={signal.map((v, i) => `${(i / Math.max(1, signal.length - 1)) * 320},${120 - ((v - 50) * 2)}`).join(' ')}
-                />
+          <div style={{ width: '100%', maxWidth: 360, background: '#111', color: '#fff', borderRadius: 10, padding: 16 }}>
+            <p style={{ margin: 0, fontSize: 13, color: '#cbd5e1' }}>Live pulse waveform</p>
+            <div style={{ height: 150, marginTop: 10, background: 'linear-gradient(180deg, #0f172a 0%, #111827 100%)', borderRadius: 8, overflow: 'hidden' }}>
+              <svg width="100%" height="150" viewBox="0 0 300 140" preserveAspectRatio="none">
+                <polyline fill="none" stroke="#22c55e" strokeWidth={2} points={waveformPoints} />
               </svg>
             </div>
-            <p style={{ marginTop: 8 }} className="small">Estimated BPM: <strong>{estimateBPM || '—'}</strong></p>
+            <div style={{ marginTop: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 36, fontWeight: 700 }}>{metrics.bpm || '—'}</div>
+              <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.2em', color: '#94a3b8' }}>Estimated BPM</div>
+            </div>
           </div>
         </div>
       </div>
