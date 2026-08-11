@@ -119,5 +119,4 @@ If you'd like, I can add a sample GitHub Action to build the frontend and publis
 - `POST /api/patients` creates a patient.
 - `POST /api/patients/:id/mental-health` appends a mental-health sample.
 
-## License
-This project is licensed under the MIT License.
+
